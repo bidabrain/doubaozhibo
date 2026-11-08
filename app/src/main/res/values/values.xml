@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">豆包直播</string>
+
+    <color name="bg">#F4F5F7</color>
+    <color name="bar">#1C1E25</color>
+    <color name="gold">#DFC79C</color>
+    <color name="text">#222222</color>
+    <color name="sub">#888888</color>
+    <color name="live">#E53935</color>
+
+    <style name="Theme.DoubaoLive" parent="Theme.Material3.Light.NoActionBar">
+        <item name="colorPrimary">@color/bar</item>
+        <item name="colorSecondary">@color/gold</item>
+        <item name="android:statusBarColor">@color/bar</item>
+        <item name="android:windowBackground">@color/bg</item>
+    </style>
+
+    <style name="Theme.DoubaoLive.Player">
+        <item name="android:statusBarColor">@android:color/black</item>
+        <item name="android:windowBackground">@android:color/black</item>
+    </style>
+</resources>
