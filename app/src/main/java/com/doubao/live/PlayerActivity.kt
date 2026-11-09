@@ -1,17 +1,16 @@
 package com.doubao.live
 
 import android.app.PictureInPictureParams
+import android.content.Context
 import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.content.res.ColorStateList
-import java.text.SimpleDateFormat
-import java.util.Locale
-import java.util.TimeZone
 import android.content.res.Configuration
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.util.Rational
+import android.view.KeyEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.LinearLayout
@@ -34,6 +33,8 @@ import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import coil.load
 import com.doubao.live.databinding.ActivityPlayerBinding
 import com.google.android.material.chip.Chip
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -44,12 +45,18 @@ class PlayerActivity : AppCompatActivity() {
     companion object {
         const val EXTRA_PLAY_ID = "playId"
         private const val MAX_RETRY = 5
+
+        fun start(ctx: Context, playId: String) {
+            ctx.startActivity(Intent(ctx, PlayerActivity::class.java).putExtra(EXTRA_PLAY_ID, playId))
+        }
     }
 
     private lateinit var b: ActivityPlayerBinding
     private var player: ExoPlayer? = null
     private var playId = ""
+    private var lines: List<SignalLine> = emptyList()
     private var fullscreen = false
+    private var tv = false
     private var retry = 0
     private var job: Job? = null
 
@@ -58,12 +65,10 @@ class PlayerActivity : AppCompatActivity() {
         b = ActivityPlayerBinding.inflate(layoutInflater)
         setContentView(b.root)
 
+        tv = isTv()
         playId = intent.getStringExtra(EXTRA_PLAY_ID).orEmpty()
         b.playerView.keepScreenOn = true
-        b.playerView.setFullscreenButtonClickListener {
-            android.util.Log.d("DoubaoPlayer", "fullscreen click: $it")
-            setFullscreen(it)
-        }
+        b.playerView.setFullscreenButtonClickListener { setFullscreen(it) }
         // 直播不需要上一个/下一个/快进快退
         b.playerView.setShowPreviousButton(false)
         b.playerView.setShowNextButton(false)
@@ -72,13 +77,25 @@ class PlayerActivity : AppCompatActivity() {
 
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
-                if (fullscreen) setFullscreen(false) else finish()
+                when {
+                    // 遥控器：控制栏显示时先收起
+                    tv && b.playerView.isControllerFullyVisible -> b.playerView.hideController()
+                    fullscreen && phoneForcedLandscape -> setFullscreen(false)
+                    else -> finish()
+                }
             }
         })
 
         initPlayer()
         loadDetail()
         startStream()
+
+        // 电视 / 横屏设备直接全屏
+        setFullscreen(tv || isLandscape())
+        if (tv) {
+            b.playerView.requestFocus()
+            Toast.makeText(this, "遥控器 ↑↓ 切换信号，菜单键选择线路", Toast.LENGTH_LONG).show()
+        }
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -150,7 +167,7 @@ class PlayerActivity : AppCompatActivity() {
                     prepare()
                     play()
                 }
-            } catch (e: kotlinx.coroutines.CancellationException) {
+            } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 showMessage("获取直播流失败：${e.message}")
@@ -163,7 +180,58 @@ class PlayerActivity : AppCompatActivity() {
         playId = newId
         retry = 0
         player?.stop()
+        syncChips()
         startStream()
+    }
+
+    /** 遥控器上下键：切换到相邻线路 */
+    private fun stepLine(delta: Int) {
+        if (lines.size < 2) {
+            Toast.makeText(this, "只有一个直播信号", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val i = lines.indexOfFirst { it.playId == playId }.coerceAtLeast(0)
+        val next = lines[(i + delta + lines.size) % lines.size]
+        Toast.makeText(this, "切换到：${next.name}", Toast.LENGTH_SHORT).show()
+        switchLine(next.playId)
+    }
+
+    private fun showLinePicker() {
+        if (lines.isEmpty()) return
+        val names = lines.map { it.name }.toTypedArray()
+        val current = lines.indexOfFirst { it.playId == playId }
+        MaterialAlertDialogBuilder(this)
+            .setTitle("选择直播信号")
+            .setSingleChoiceItems(names, current) { d, which ->
+                d.dismiss()
+                switchLine(lines[which].playId)
+            }
+            .show()
+    }
+
+    // ---------------- 遥控器按键 ----------------
+
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (event.action == KeyEvent.ACTION_DOWN) {
+            val controllerHidden = !b.playerView.isControllerFullyVisible
+            when (event.keyCode) {
+                KeyEvent.KEYCODE_CHANNEL_UP -> { stepLine(-1); return true }
+                KeyEvent.KEYCODE_CHANNEL_DOWN -> { stepLine(1); return true }
+                KeyEvent.KEYCODE_MENU -> { showLinePicker(); return true }
+                KeyEvent.KEYCODE_DPAD_UP -> if (fullscreen && controllerHidden) { stepLine(-1); return true }
+                KeyEvent.KEYCODE_DPAD_DOWN -> if (fullscreen && controllerHidden) { stepLine(1); return true }
+                KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_NUMPAD_ENTER ->
+                    if (fullscreen && controllerHidden) {
+                        b.playerView.showController()
+                        return true
+                    }
+                KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> {
+                    player?.let { if (it.isPlaying) it.pause() else it.play() }
+                    return true
+                }
+            }
+        }
+        return super.dispatchKeyEvent(event)
     }
 
     // ---------------- 比赛信息 & 线路 ----------------
@@ -174,7 +242,8 @@ class PlayerActivity : AppCompatActivity() {
                 val d = Api.signal(playId)
                 val s = d.schedule
                 if (s != null) {
-                    b.league.text = listOf(s.league, localTime(s.matchTime)).filter { it.isNotBlank() }.joinToString("  ")
+                    b.league.text = listOf(s.league, Times.format(s.matchTime, "MM-dd HH:mm"))
+                        .filter { it.isNotBlank() }.joinToString("  ")
                     b.home.text = s.home
                     b.away.text = s.away
                     b.score.text = "${s.homeScore} : ${s.awayScore}"
@@ -185,23 +254,24 @@ class PlayerActivity : AppCompatActivity() {
                     b.league.text = d.title
                 }
                 b.state.text = d.state
+                lines = d.lines.ifEmpty { listOf(SignalLine(0, d.name, d.playId)) }
                 b.lines.removeAllViews()
-                val lines = d.lines.ifEmpty { listOf(SignalLine(0, d.name, d.playId)) }
+                val states = arrayOf(intArrayOf(android.R.attr.state_checked), intArrayOf())
                 lines.forEach { line ->
                     val chip = Chip(this@PlayerActivity).apply {
                         text = line.name
+                        tag = line.playId
                         isCheckable = true
                         isCheckedIconVisible = false
-                        val states = arrayOf(intArrayOf(android.R.attr.state_checked), intArrayOf())
                         chipBackgroundColor = ColorStateList(states, intArrayOf(0xFFDFC79C.toInt(), 0xFF2A2D36.toInt()))
                         setTextColor(ColorStateList(states, intArrayOf(0xFF1C1E25.toInt(), 0xFFDDDDDD.toInt())))
                         chipStrokeWidth = 0f
-                        isChecked = line.playId == playId
-                        setOnClickListener { switchLine(line.playId); isChecked = true }
+                        setOnClickListener { switchLine(line.playId) }
                     }
                     b.lines.addView(chip)
                 }
-            } catch (e: kotlinx.coroutines.CancellationException) {
+                syncChips()
+            } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 Toast.makeText(this@PlayerActivity, "比赛信息加载失败：${e.message}", Toast.LENGTH_SHORT).show()
@@ -209,7 +279,19 @@ class PlayerActivity : AppCompatActivity() {
         }
     }
 
+    private fun syncChips() {
+        for (i in 0 until b.lines.childCount) {
+            val chip = b.lines.getChildAt(i) as Chip
+            chip.isChecked = chip.tag == playId
+        }
+    }
+
     // ---------------- 全屏 / 画中画 ----------------
+
+    /** 是否是手机竖屏时点全屏按钮强制转成的横屏（区别于平板/盒子本身就是横屏） */
+    private var phoneForcedLandscape = false
+
+    private fun isLandscape() = resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
 
     private fun setFullscreen(on: Boolean) {
         fullscreen = on
@@ -217,28 +299,41 @@ class PlayerActivity : AppCompatActivity() {
         val ctl = WindowCompat.getInsetsController(window, window.decorView)
         val lp = b.playerBox.layoutParams as LinearLayout.LayoutParams
         if (on) {
-            requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+            if (!tv && !isLandscape()) {
+                phoneForcedLandscape = true
+                requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+            }
             b.info.visibility = View.GONE
             lp.height = ViewGroup.LayoutParams.MATCH_PARENT
             ctl.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
             ctl.hide(WindowInsetsCompat.Type.systemBars())
+            b.root.fitsSystemWindows = false
         } else {
-            requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+            if (phoneForcedLandscape) {
+                phoneForcedLandscape = false
+                requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+            }
             b.info.visibility = View.VISIBLE
-            lp.height = resources.displayMetrics.widthPixels.coerceAtMost(resources.displayMetrics.heightPixels) * 9 / 16
+            val dm = resources.displayMetrics
+            lp.height = minOf(dm.widthPixels, dm.heightPixels) * 9 / 16
             ctl.show(WindowInsetsCompat.Type.systemBars())
+            b.root.fitsSystemWindows = true
         }
         b.playerBox.layoutParams = lp
+        b.root.requestApplyInsets()
     }
 
-    override fun onAttachedToWindow() {
-        super.onAttachedToWindow()
-        if (!fullscreen) setFullscreen(false) // 按 16:9 设置竖屏下的播放器高度
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        if (tv || phoneForcedLandscape) return
+        // 平板等可自由旋转的设备：横屏自动全屏，转回竖屏退出全屏
+        val landscape = newConfig.orientation == Configuration.ORIENTATION_LANDSCAPE
+        if (landscape != fullscreen) setFullscreen(landscape)
     }
 
     override fun onUserLeaveHint() {
         super.onUserLeaveHint()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && player?.isPlaying == true) {
+        if (!tv && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && player?.isPlaying == true) {
             enterPictureInPictureMode(PictureInPictureParams.Builder().setAspectRatio(Rational(16, 9)).build())
         }
     }
@@ -267,14 +362,6 @@ class PlayerActivity : AppCompatActivity() {
         job?.cancel()
         player?.release()
         player = null
-    }
-
-    /** 接口返回 UTC 时间（如 2026-11-08T16:30:00Z），转为本地时间显示 */
-    private fun localTime(iso: String): String = try {
-        val utc = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US).apply { timeZone = TimeZone.getTimeZone("UTC") }
-        SimpleDateFormat("MM-dd HH:mm", Locale.getDefault()).format(utc.parse(iso.take(19))!!)
-    } catch (e: Exception) {
-        iso.replace('T', ' ').take(16)
     }
 
     private fun showMessage(msg: String) {

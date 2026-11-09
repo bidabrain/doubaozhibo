@@ -2,22 +2,59 @@
 <resources>
     <string name="app_name">豆包直播</string>
 
-    <color name="bg">#F4F5F7</color>
-    <color name="bar">#1C1E25</color>
-    <color name="gold">#DFC79C</color>
-    <color name="text">#222222</color>
-    <color name="sub">#888888</color>
+    <!-- 品牌色 -->
+    <color name="brand_dark">#1C1E25</color>
+    <color name="brand_gold">#DFC79C</color>
     <color name="live">#E53935</color>
 
-    <style name="Theme.DoubaoLive" parent="Theme.Material3.Light.NoActionBar">
-        <item name="colorPrimary">@color/bar</item>
-        <item name="colorSecondary">@color/gold</item>
-        <item name="android:statusBarColor">@color/bar</item>
-        <item name="android:windowBackground">@color/bg</item>
+    <!-- 浅色主题 -->
+    <color name="primary">#7A5E22</color>
+    <color name="on_primary">#FFFFFF</color>
+    <color name="primary_container">#FBE7BF</color>
+    <color name="on_primary_container">#271900</color>
+    <color name="background">#F7F7F9</color>
+    <color name="surface">#FFFFFF</color>
+    <color name="surface_variant">#EEEEF2</color>
+    <color name="on_surface">#1B1C20</color>
+    <color name="on_surface_variant">#6B6E76</color>
+    <color name="outline">#DADCE2</color>
+    <color name="nav_bar">#FFFFFF</color>
+
+    <style name="Theme.DoubaoLive" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/primary</item>
+        <item name="colorOnPrimary">@color/on_primary</item>
+        <item name="colorPrimaryContainer">@color/primary_container</item>
+        <item name="colorOnPrimaryContainer">@color/on_primary_container</item>
+        <item name="colorSecondaryContainer">@color/primary_container</item>
+        <item name="colorOnSecondaryContainer">@color/on_primary_container</item>
+        <item name="colorSurface">@color/surface</item>
+        <item name="colorSurfaceContainer">@color/nav_bar</item>
+        <item name="colorSurfaceVariant">@color/surface_variant</item>
+        <item name="colorOnSurface">@color/on_surface</item>
+        <item name="colorOnSurfaceVariant">@color/on_surface_variant</item>
+        <item name="colorOutline">@color/outline</item>
+        <item name="android:colorBackground">@color/background</item>
+        <item name="android:windowBackground">@color/background</item>
+        <item name="android:statusBarColor">@color/background</item>
+        <item name="android:navigationBarColor">@color/nav_bar</item>
+        <item name="android:windowLightStatusBar">@bool/light_bars</item>
+        <item name="android:windowLightNavigationBar">@bool/light_bars</item>
     </style>
 
-    <style name="Theme.DoubaoLive.Player">
+    <!-- 启动页（androidx.core.splashscreen） -->
+    <style name="Theme.DoubaoLive.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/brand_dark</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="postSplashScreenTheme">@style/Theme.DoubaoLive</item>
+    </style>
+
+    <!-- 播放页始终深色 -->
+    <style name="Theme.DoubaoLive.Player" parent="Theme.Material3.Dark.NoActionBar">
+        <item name="colorPrimary">@color/brand_gold</item>
         <item name="android:statusBarColor">@android:color/black</item>
+        <item name="android:navigationBarColor">#111111</item>
         <item name="android:windowBackground">@android:color/black</item>
     </style>
+
+    <bool name="light_bars">true</bool>
 </resources>

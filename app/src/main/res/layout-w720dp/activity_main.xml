@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 平板 / 横屏 / 电视：左侧导航栏 -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fitsSystemWindows="true"
+    android:orientation="horizontal">
+
+    <com.google.android.material.navigationrail.NavigationRailView
+        android:id="@+id/bottomNav"
+        android:layout_width="wrap_content"
+        android:layout_height="match_parent"
+        android:background="@color/nav_bar"
+        app:labelVisibilityMode="labeled"
+        app:menu="@menu/bottom_nav"
+        app:menuGravity="center"
+        tools:viewBindingType="com.google.android.material.navigation.NavigationBarView" />
+
+    <FrameLayout
+        android:id="@+id/container"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1" />
+</LinearLayout>

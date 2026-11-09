@@ -48,6 +48,25 @@ data class SignalDetail(
     val lines: List<SignalLine>,
 )
 
+/** 赛程中的一场比赛 —— 对应 /api/v1/home/schedules 的 items[].match */
+data class Match(
+    val id: Int,
+    val league: String,
+    val sport: String,
+    val matchTime: String,
+    val home: String,
+    val away: String,
+    val homeLogo: String,
+    val awayLogo: String,
+    val homeScore: Int,
+    val awayScore: Int,
+    val status: Int,
+    val playId: String?,
+    val lines: List<SignalLine>,
+)
+
+data class SchedulePage(val items: List<Match>, val hasMore: Boolean, val nextCursor: String?)
+
 /** 真实直播流 —— 对应 /api/v1/public/signals/{playId}/play */
 data class PlayInfo(val playable: Boolean, val url: String, val kind: String, val message: String)
 
@@ -156,6 +175,51 @@ object Api {
             schedule = schedule,
             lines = lines,
         )
+    }
+
+    /**
+     * 赛程：/api/v1/home/schedules?date=yyyy-MM-dd&days=5&category=..&continuous=true[&cursor=..]
+     * status: 0 未开始 / 1 进行中 / 2 已完赛
+     */
+    suspend fun schedules(date: String, category: String, cursor: String?): SchedulePage {
+        var path = "/api/v1/home/schedules?date=$date&days=5&category=$category&continuous=true"
+        if (!cursor.isNullOrEmpty()) path += "&cursor=" + URLEncoder.encode(cursor, "UTF-8")
+        val data = getData(path) as? JSONObject ?: return SchedulePage(emptyList(), false, null)
+        val arr = data.optJSONArray("items")
+        val list = buildList {
+            if (arr != null) for (i in 0 until arr.length()) {
+                val item = arr.getJSONObject(i)
+                val m = item.optJSONObject("match") ?: continue
+                val rooms = item.optJSONArray("rooms")
+                val lines = buildList {
+                    if (rooms != null) for (j in 0 until rooms.length()) {
+                        val r = rooms.getJSONObject(j)
+                        val pid = r.optString("url").substringAfter("/play/", "")
+                        if (pid.isNotEmpty()) add(SignalLine(r.optInt("id"), r.optString("anchor"), pid))
+                    }
+                }
+                add(
+                    Match(
+                        id = m.optInt("id"),
+                        league = m.optString("league"),
+                        sport = m.optString("sport"),
+                        matchTime = m.optString("matchTime"),
+                        home = m.optString("home"),
+                        away = m.optString("away"),
+                        homeLogo = abs(m.optString("homeLogo")),
+                        awayLogo = abs(m.optString("awayLogo")),
+                        homeScore = m.optInt("homeScore"),
+                        awayScore = m.optInt("awayScore"),
+                        status = m.optInt("status"),
+                        playId = m.optString("playUrl").takeIf { it != "null" }?.substringAfter("/play/", "")
+                            ?.ifEmpty { null } ?: lines.firstOrNull()?.playId,
+                        lines = lines,
+                    )
+                )
+            }
+        }
+        val next = data.optString("nextCursor").takeIf { it.isNotEmpty() && it != "null" }
+        return SchedulePage(list, data.optBoolean("hasMore") && next != null, next)
     }
 
     /** 提取真实直播流地址 */

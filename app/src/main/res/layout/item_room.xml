@@ -1,13 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    style="?attr/materialCardViewElevatedStyle"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_margin="5dp"
-    app:cardBackgroundColor="#FFFFFF"
-    app:cardCornerRadius="8dp"
+    android:layout_margin="6dp"
+    app:cardBackgroundColor="?attr/colorSurface"
+    app:cardCornerRadius="14dp"
     app:cardElevation="1dp"
-    app:strokeWidth="0dp">
+    android:focusable="true"
+    app:strokeColor="@color/stroke_focus"
+    app:strokeWidth="3dp">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -18,11 +21,11 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content">
 
-            <ImageView
+            <com.doubao.live.AspectImageView
                 android:id="@+id/cover"
                 android:layout_width="match_parent"
-                android:layout_height="100dp"
-                android:background="#333333"
+                android:layout_height="wrap_content"
+                android:background="?attr/colorSurfaceVariant"
                 android:contentDescription="@null"
                 android:scaleType="centerCrop" />
 
@@ -30,12 +33,13 @@
                 android:id="@+id/badge"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_margin="6dp"
+                android:layout_margin="8dp"
                 android:background="@drawable/bg_badge"
-                android:paddingHorizontal="5dp"
-                android:paddingVertical="1dp"
+                android:paddingHorizontal="6dp"
+                android:paddingVertical="2dp"
                 android:textColor="#FFFFFF"
-                android:textSize="11sp" />
+                android:textSize="10sp"
+                android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/popularity"
@@ -44,7 +48,9 @@
                 android:layout_gravity="bottom"
                 android:background="@drawable/bg_shade"
                 android:gravity="end"
-                android:padding="5dp"
+                android:paddingHorizontal="8dp"
+                android:paddingTop="14dp"
+                android:paddingBottom="5dp"
                 android:textColor="#FFFFFF"
                 android:textSize="11sp" />
         </FrameLayout>
@@ -55,22 +61,41 @@
             android:layout_height="wrap_content"
             android:ellipsize="end"
             android:maxLines="1"
-            android:paddingHorizontal="8dp"
-            android:paddingTop="6dp"
-            android:textColor="@color/text"
-            android:textSize="13sp"
+            android:paddingHorizontal="10dp"
+            android:paddingTop="8dp"
+            android:textColor="?attr/colorOnSurface"
+            android:textSize="14sp"
             android:textStyle="bold" />
 
-        <TextView
-            android:id="@+id/anchor"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:ellipsize="end"
-            android:maxLines="1"
-            android:paddingHorizontal="8dp"
-            android:paddingTop="2dp"
-            android:paddingBottom="8dp"
-            android:textColor="@color/sub"
-            android:textSize="12sp" />
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingHorizontal="10dp"
+            android:paddingTop="4dp"
+            android:paddingBottom="10dp">
+
+            <TextView
+                android:id="@+id/league"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_tag"
+                android:paddingHorizontal="6dp"
+                android:paddingVertical="1dp"
+                android:textColor="?attr/colorOnPrimaryContainer"
+                android:textSize="10sp" />
+
+            <TextView
+                android:id="@+id/anchor"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textSize="12sp" />
+        </LinearLayout>
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:id="@+id/nav_live" android:icon="@drawable/ic_nav_live" android:title="直播" />
+    <item android:id="@+id/nav_schedule" android:icon="@drawable/ic_nav_schedule" android:title="赛程" />
+    <item android:id="@+id/nav_me" android:icon="@drawable/ic_nav_me" android:title="我的" />
+</menu>

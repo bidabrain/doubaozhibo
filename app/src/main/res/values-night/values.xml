@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="primary">#DFC79C</color>
+    <color name="on_primary">#3D2E0A</color>
+    <color name="primary_container">#574519</color>
+    <color name="on_primary_container">#FBE7BF</color>
+    <color name="background">#111216</color>
+    <color name="surface">#1C1E25</color>
+    <color name="surface_variant">#272A33</color>
+    <color name="on_surface">#E6E6EA</color>
+    <color name="on_surface_variant">#9EA1AA</color>
+    <color name="outline">#2E313A</color>
+    <color name="nav_bar">#181A20</color>
+
+    <bool name="light_bars">false</bool>
+</resources>

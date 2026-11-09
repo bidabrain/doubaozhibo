@@ -83,7 +83,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:gravity="center"
-                    android:textColor="@color/gold"
+                    android:textColor="@color/brand_gold"
                     android:textSize="26sp"
                     android:textStyle="bold" />
 
